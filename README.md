@@ -1,4 +1,3 @@
-Yes, here is the **entire** content for your `README.md` file in one single block. You can copy everything from the top line to the bottom and paste it directly into VS Code.
 
 ```markdown
 # 👶 Baby Birth Weight Predictor
