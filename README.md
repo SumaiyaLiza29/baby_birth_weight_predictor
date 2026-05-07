@@ -1,14 +1,11 @@
-# শিশুর জন্মকালীন ওজন পূর্বাভাস — সম্পূর্ণ প্রজেক্ট
-
-## ফোল্ডার কাঠামো
-
-```
+Baby Birth Weight Prediction — Full Project
+Folder Structure
 baby_bwt_predictor/
 ├── data/
-│   └── final_continuous_babies_data.csv   ← আপনার ডেটা এখানে রাখুন
-├── models/                                ← train করলে এখানে .pkl সেভ হবে
+│   └── final_continuous_babies_data.csv   ← Place your data here
+├── models/                                ← After training, .pkl files will be saved here
 ├── backend/
-│   ├── main.py                            ← FastAPI সার্ভার
+│   ├── main.py                            ← FastAPI server
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
@@ -20,64 +17,67 @@ baby_bwt_predictor/
 │   ├── vite.config.js
 │   ├── tailwind.config.js
 │   └── postcss.config.js
-├── train.py                               ← মডেল ট্রেনিং স্ক্রিপ্ট
+├── train.py                               ← Model training script
 └── README.md
-```
+Step 1 — Train the Model
 
----
+To train the model, follow these steps:
 
-## ধাপ ১ — মডেল ট্রেন করুন
+Navigate to the project folder:
 
-```bash
-# প্রজেক্ট ফোল্ডারে যান
 cd baby_bwt_predictor
 
-# Python প্যাকেজ ইনস্টল (একবার)
+Install required Python packages (only once):
+
 pip install -r backend/requirements.txt
+Place your data:
+Place the final_continuous_babies_data.csv file in the data/ folder.
 
-# ডেটা রাখুন: data/final_continuous_babies_data.csv
-# তারপর ট্রেন করুন
+Train the model:
+
 python train.py
-```
 
-এটি চালালে `models/` ফোল্ডারে তৈরি হবে:
-- `lgbm.pkl`
-- `xgb.pkl`
-- `gb.pkl`
-- `meta_model.pkl`
-- `scaler.pkl`
+This will train the models and save the following files in the models/ folder:
 
----
+lgbm.pkl
+xgb.pkl
+gb.pkl
+meta_model.pkl
+scaler.pkl
+Step 2 — Start the Backend
 
-## ধাপ ২ — Backend চালু করুন
+Navigate to the project folder if you're not already there:
 
-```bash
 cd baby_bwt_predictor
+
+Start the FastAPI server:
+
 uvicorn backend.main:app --reload --port 8000
-```
+Check if the server is running by visiting:
+Health check: http://localhost:8000/health
+API docs: http://localhost:8000/docs
+Step 3 — Start the Frontend
 
-চেক করুন: http://localhost:8000/health
-API ডক: http://localhost:8000/docs
+Navigate to the frontend folder in a new terminal window:
 
----
-
-## ধাপ ৩ — Frontend চালু করুন
-
-নতুন টার্মিনালে:
-
-```bash
 cd baby_bwt_predictor/frontend
+
+Install dependencies:
+
 npm install
+
+Run the frontend application:
+
 npm run dev
-```
+Access the frontend in your browser:
+Go to http://localhost:3000
+ to see the React app in action.
+Using the API (Directly via Command Line)
 
-Browser-এ যান: http://localhost:3000
+You can also interact with the FastAPI server directly using curl or similar tools.
 
----
+Send a POST request to the /predict endpoint:
 
-## API ব্যবহার (সরাসরি)
-
-```bash
 curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d '{
@@ -88,13 +88,12 @@ curl -X POST http://localhost:8000/predict \
     "weight": 130,
     "smoke": 0
   }'
-```
 
-**Response:**
-```json
+Response Example:
+
 {
   "predicted_class": 1,
-  "predicted_label": "স্বাভাবিক",
+  "predicted_label": "Normal",
   "predicted_range": "88 – 141 oz  (2.5 – 4 kg)",
   "bmi": 23.01,
   "probabilities": {
@@ -103,14 +102,14 @@ curl -X POST http://localhost:8000/predict \
     "high": 0.1045
   }
 }
-```
+Class Definitions
 
----
+Here’s a breakdown of the classes and their meanings:
 
-## ক্লাস সংজ্ঞা
-
-| ক্লাস | মান | বাস্তব ওজন |
-|-------|-----|------------|
-| 0 — কম ওজন | < 88 oz | < 2.5 kg |
-| 1 — স্বাভাবিক | 88–141 oz | 2.5–4 kg |
-| 2 — বেশি ওজন | > 141 oz | > 4 kg |
+Class	Value	Actual Weight
+0 — Low Weight	< 88 oz	< 2.5 kg
+1 — Normal	88–141 oz	2.5–4 kg
+2 — High Weight	> 141 oz	> 4 kg
+Notes:
+Data File: Make sure you place the final_continuous_babies_data.csv file in the data/ folder before training the model.
+Dependencies: All required dependencies for both backend and frontend are included in the requirements.txt and package.json files, respectively.
