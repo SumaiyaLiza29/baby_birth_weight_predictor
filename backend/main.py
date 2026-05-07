@@ -1,10 +1,21 @@
+import os
+from pathlib import Path
+import numpy as np
+import joblib
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import numpy as np
-import joblib
-import os
+
+# ===============================
+# Path Settings
+# ===============================
+# BASE_DIR points directly to the 'backend' folder
+BASE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = BASE_DIR.parent / "models"
+STATIC_DIR = BASE_DIR / "static"
 
 # Create FastAPI instance
 app = FastAPI(title="Baby Birth Weight Predictor API")
@@ -20,15 +31,13 @@ app.add_middleware(
 # ===============================
 # Load Models
 # ===============================
-BASE = os.path.join(os.path.dirname(__file__), "..", "models")
-
 try:
-    # Load the models
-    lgbm       = joblib.load(os.path.join(BASE, "lgbm.pkl"))
-    xgb        = joblib.load(os.path.join(BASE, "xgb.pkl"))
-    gb         = joblib.load(os.path.join(BASE, "gb.pkl"))
-    meta_model = joblib.load(os.path.join(BASE, "meta_model.pkl"))
-    scaler     = joblib.load(os.path.join(BASE, "scaler.pkl"))
+    # Load the models using absolute paths
+    lgbm       = joblib.load(MODELS_DIR / "lgbm.pkl")
+    xgb        = joblib.load(MODELS_DIR / "xgb.pkl")
+    gb         = joblib.load(MODELS_DIR / "gb.pkl")
+    meta_model = joblib.load(MODELS_DIR / "meta_model.pkl")
+    scaler     = joblib.load(MODELS_DIR / "scaler.pkl")
     print("✅ All models loaded successfully.")
 except Exception as e:
     print(f"⚠️ Failed to load models: {e}")
@@ -132,15 +141,12 @@ def health():
     return {"status": "ok", "models_loaded": lgbm is not None}
 
 # ===============================
-# Favicon Setup (Optional)
+# Static Files & Favicon Setup
 # ===============================
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
-
-# Mount static files (if you want to serve a favicon or other static assets)
-app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+# Mount using the robust absolute path constructed at the top
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Favicon endpoint
-@app.get("/favicon.ico")
+@app.get("/favicon.ico", include_in_schema=False)
 def favicon():
     return RedirectResponse(url="/static/favicon.ico")
