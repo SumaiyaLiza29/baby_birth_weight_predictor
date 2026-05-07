@@ -10,29 +10,34 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 # ===============================
-# Path Settings
+# Path Configurations
 # ===============================
-# BASE_DIR points directly to the 'backend' folder
+# BASE_DIR points to the 'backend' folder
 BASE_DIR = Path(__file__).resolve().parent
+# MODELS_DIR points to the 'models' folder in the project root
 MODELS_DIR = BASE_DIR.parent / "models"
+# STATIC_DIR points to the 'static' folder inside 'backend'
 STATIC_DIR = BASE_DIR / "static"
 
 # Create FastAPI instance
 app = FastAPI(title="Baby Birth Weight Predictor API")
 
+# Vercel handler export
+handler = app
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins (you can specify your frontend URL for more security)
-    allow_methods=["*"],  # Allows all HTTP methods
-    allow_headers=["*"],  # Allows all headers
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ===============================
-# Load Models
+# Model Loading Logic
 # ===============================
 try:
-    # Load the models using absolute paths
+    # Load serialized models and scaler using absolute paths
     lgbm       = joblib.load(MODELS_DIR / "lgbm.pkl")
     xgb        = joblib.load(MODELS_DIR / "xgb.pkl")
     gb         = joblib.load(MODELS_DIR / "gb.pkl")
@@ -44,109 +49,96 @@ except Exception as e:
     lgbm = xgb = gb = meta_model = scaler = None
 
 # ===============================
-# Request Schema (Input Format)
+# Data Schemas
 # ===============================
 class PredictRequest(BaseModel):
-    gestation: float  # Weeks
-    parity:    float  # Number of previous children
-    age:       float  # Mother's age
+    gestation: float  # Measured in weeks
+    parity:    float  # Number of previous births
+    age:       float  # Mother's age in years
     height:    float  # Height in inches
-    weight:    float  # Weight in pounds
-    smoke:     int    # 0 or 1 (whether the mother smokes)
+    weight:    float  # Pre-pregnancy weight in pounds
+    smoke:     int    # Binary: 1 for smoker, 0 for non-smoker
 
 # ===============================
-# Helper Function (BMI Calculation)
+# Utility Functions
 # ===============================
 def calc_bmi(weight_lb: float, height_in: float) -> float:
-    """
-    Calculate BMI based on weight (lbs) and height (inches).
-    """
-    kg = weight_lb * 0.453592  # Convert weight to kg
-    m  = height_in * 0.0254    # Convert height to meters
+    """Calculates BMI from Imperial units."""
+    kg = weight_lb * 0.453592
+    m  = height_in * 0.0254
     return kg / (m ** 2) if m > 0 else 0.0
 
-# Class Labels and Ranges for Prediction
-CLASS_LABELS = {
-    0: "Low Weight",
-    1: "Normal",
-    2: "High Weight",
-}
-
+# Prediction Constants
+CLASS_LABELS = {0: "Low Weight", 1: "Normal", 2: "High Weight"}
 CLASS_RANGE = {
-    0: "< 88 oz  (< 2.5 kg)",
-    1: "88 – 141 oz  (2.5 – 4 kg)",
-    2: "> 141 oz  (> 4 kg)",
+    0: "< 88 oz (< 2.5 kg)", 
+    1: "88 – 141 oz (2.5 – 4 kg)", 
+    2: "> 141 oz (> 4 kg)"
 }
 
 # ===============================
-# Predict Endpoint
+# API Endpoints
 # ===============================
+
+@app.get("/")
+def read_root():
+    """Root endpoint for deployment verification."""
+    return {
+        "message": "Baby Birth Weight Predictor API is online.",
+        "docs": "/docs"
+    }
+
 @app.post("/predict")
 def predict(req: PredictRequest):
-    """
-    Predicts the birth weight category based on the input features.
-    """
+    """Predicts birth weight category using an ensemble stacking model."""
     if any(m is None for m in [lgbm, xgb, gb, meta_model, scaler]):
-        return {"error": "Models are not loaded. Please check the models/ folder."}
+        return {"error": "Machine Learning models are not initialized."}
 
-    # Calculate BMI
+    # Feature Engineering
     bmi = calc_bmi(req.weight, req.height)
-
-    # Prepare features for prediction
-    features = np.array([[ 
-        req.gestation,
-        req.parity,
-        req.age,
-        req.height,
-        req.weight,
-        bmi,
-        req.smoke,
+    features = np.array([[
+        req.gestation, req.parity, req.age, 
+        req.height, req.weight, bmi, req.smoke
     ]])
 
-    # Scale the features
+    # Data Transformation
     X_scaled = scaler.transform(features)
 
-    # Stacking: Use base models to predict probabilities, then use meta-model
+    # Ensemble Stacking: Aggregate base model probabilities
     meta_input = np.hstack([
         lgbm.predict_proba(X_scaled),
         xgb.predict_proba(X_scaled),
         gb.predict_proba(X_scaled),
     ])
 
-    # Get probabilities from the meta-model
-    probs     = meta_model.predict_proba(meta_input)[0]
-    pred_cls  = int(np.argmax(probs))  # Get the class with the highest probability
+    # Final prediction via Meta-Model
+    probs = meta_model.predict_proba(meta_input)[0]
+    pred_cls = int(np.argmax(probs))
 
-    # Return the prediction and probabilities
     return {
-        "predicted_class":       pred_cls,
-        "predicted_label":       CLASS_LABELS[pred_cls],
-        "predicted_range":       CLASS_RANGE[pred_cls],
-        "bmi":                   round(bmi, 2),
+        "predicted_class": pred_cls,
+        "predicted_label": CLASS_LABELS[pred_cls],
+        "predicted_range": CLASS_RANGE[pred_cls],
+        "bmi": round(bmi, 2),
         "probabilities": {
-            "low":    round(float(probs[0]), 4),
+            "low": round(float(probs[0]), 4),
             "normal": round(float(probs[1]), 4),
-            "high":   round(float(probs[2]), 4),
+            "high": round(float(probs[2]), 4),
         },
     }
 
-# ===============================
-# Health Check Endpoint
-# ===============================
 @app.get("/health")
 def health():
-    """
-    Simple health check to confirm if the server and models are loaded.
-    """
-    return {"status": "ok", "models_loaded": lgbm is not None}
+    """Health check endpoint for monitoring."""
+    return {"status": "active", "models_loaded": lgbm is not None}
 
 # ===============================
-# Static Files & Favicon Setup
+# Static Assets & Routing
 # ===============================
-# Mount using the robust absolute path constructed at the top
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# Favicon endpoint
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
+    """Handles favicon requests to prevent 404 errors."""
     return RedirectResponse(url="/static/favicon.ico")
