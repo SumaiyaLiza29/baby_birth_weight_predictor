@@ -10,6 +10,15 @@
       "use": "@vercel/static"
     }
   ],
+  "experimentalServices": {
+    "frontend": {
+      "routePrefix": "/"
+    },
+    "backend": {
+      "entrypoint": "backend",
+      "routePrefix": "/backend"
+    }
+  },
   "routes": [
     {
       "src": "/api/(.*)",
