@@ -11,7 +11,7 @@
       "config": {
         "distDir": "dist",
         "installCommand": "npm install",
-        "buildCommand": "npm run build"
+        "buildCommand": "cd frontend && npx vite build"
       }
     }
   ],
