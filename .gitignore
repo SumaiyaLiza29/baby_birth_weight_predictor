@@ -1,15 +1,12 @@
-# Dependencies
-node_modules/
-.env
-
-# Build outputs
-frontend/dist/
-frontend/build/
-
-# Python artifacts
 __pycache__/
 *.pyc
-backend/static/
 
-# System files
-.DS_Store
+venv/
+.env
+
+data/
+*.csv
+
+node_modules/
+dist/
+build/
