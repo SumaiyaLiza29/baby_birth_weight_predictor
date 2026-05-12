@@ -1,12 +1,28 @@
+# Python bytecode files
 __pycache__/
 *.pyc
 
+# Virtual environment
 venv/
 .env
 
+# Data files
 data/
 *.csv
 
+# Node.js dependencies (if you are using Node for frontend)
 node_modules/
+
+# Build directories
 dist/
 build/
+
+# IDE / Editor directories
+.vscode/
+.idea/
+
+# OS-generated files
+.DS_Store
+
+# Environment variables (if you have a .env file)
+.env
