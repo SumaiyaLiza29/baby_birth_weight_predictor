@@ -1,6 +1,5 @@
 # railpack.toml
 
-[build]
-  type = "python"
-  command = "uvicorn main:app --host 0.0.0.0 --port $PORT"
 
+[build]
+start = "python main.py"
